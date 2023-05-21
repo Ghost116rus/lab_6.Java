@@ -34,17 +34,19 @@ class DemonstrationWindow extends Frame implements Observer, ActionListener, Ite
         StartBtn.setSize(new Dimension(20,40));
         StartBtn.setActionCommand("OK");
         StartBtn.addActionListener(this);
-        StartBtn.setBounds(320,150, 50,20);
+        StartBtn.setBounds(200,150, 150,20);
         ControlPanel.add(StartBtn, new Point(20,20));
 
         inputField = new TextField();
-        inputField.setBounds(160,150, 150,20);
+        inputField.setBounds(80,150, 150,20);
         ControlPanel.add(inputField);
 
 
         figureChoice = new Choice();
         figureChoice.addItemListener(this);
         figureChoice.setBounds(100,35, 150,20);
+        figureChoice.add("Создание фигуры");
+        //figureChoice.select(0);
         ControlPanel.add(figureChoice);
 
         colorChoice = new Choice();
@@ -69,6 +71,8 @@ class DemonstrationWindow extends Frame implements Observer, ActionListener, Ite
         ControlPanel.add(speedChoice);
 
 
+        speedChoice.select(2);
+
         ControlPanel.setVisible(true);
     }
 
@@ -82,11 +86,26 @@ class DemonstrationWindow extends Frame implements Observer, ActionListener, Ite
         this.setLocation(100, 150);
     }
     public void update(Observable o, Object arg) {
-        MyFigure figure = (MyFigure)arg;
-        System.out.println ("x= " + figure.thr.getName() + figure.x);
+        //MyFigure figure = (MyFigure)arg;
+        //System.out.println ("x= " + figure.thr.getName() + figure.x);
         repaint();
     }
     public void paint (Graphics g) {
+        if (figureChoice.getSelectedIndex() != 0)
+        {
+            inputField.setEditable(false);
+            colorChoice.setEnabled(false);
+            StartBtn.setLabel("Изменить скорость");
+            StartBtn.setActionCommand("Change");
+        }
+        else
+        {
+            inputField.setEditable(true);
+            colorChoice.setEnabled(true);
+            StartBtn.setLabel("Пуск");
+            StartBtn.setActionCommand("OK");
+        }
+
         if (!LL.isEmpty()){
             for (Object item : LL) {
                 MyFigure figure = (MyFigure) item;
@@ -94,11 +113,21 @@ class DemonstrationWindow extends Frame implements Observer, ActionListener, Ite
                 switch (figure.type)
                 {
                     case 1:
-                        g.fillOval(figure.x, figure.y, 20, 20); break;
+                        g.fillOval(figure.x, figure.y, 30, 30); break;
                     case 2:
-                        g.drawRect(figure.x, figure.y, 20, 20);
-                }
+                        g.fillOval(figure.x, figure.y, 30, 20); break;
+                    case 3:
+                        g.drawRect(figure.x, figure.y, 30, 30); break;
+                    case 4:
+                        g.drawRect(figure.x, figure.y, 30, 25); break;
 
+                    case 5:
+                        int[] xPoints = {figure.x,figure.x-10,figure.x+30};
+                        int[] yPoints = {figure.y,figure.y+20,figure.y + 30};
+                        g.fillPolygon(xPoints,yPoints,3);
+                        break;
+                }
+                g.drawString(Integer.toString(figure.Id),figure.x + 35, figure.y + 35);
             }
         }
     }
@@ -107,8 +136,11 @@ class DemonstrationWindow extends Frame implements Observer, ActionListener, Ite
     private int GetFigureType(String textFromControlPanel){
         switch (textFromControlPanel)
         {
-            case "овал": return 1;
-            case "прямоугольник": return 2;
+            case "круг": return 1;
+            case "овал": return 2;
+            case "квадрат": return 3;
+            case "прямоугольник": return 4;
+            case "треугольник": return 5;
             default: return -1;
         }
     }
@@ -127,10 +159,23 @@ class DemonstrationWindow extends Frame implements Observer, ActionListener, Ite
             int figureType = GetFigureType(this.inputField.getText());
 
             if (figureType != -1) {
-                MyFigure figure = new MyFigure(col, figureType, this);
+                MyFigure figure = new MyFigure(col, figureType, speedArray[speedChoice.getSelectedIndex()], this);
                 LL.add(figure);
                 figure.addObserver(this);
-                figureChoice.add(figure.Id.toString());
+                figureChoice.add(Integer.toString(figure.Id));
+                figureChoice.select(0);
+                inputField.setText("");
+            }
+        }
+        else if (str.equals("Change")){
+            System.out.println(figureChoice.getSelectedIndex());
+
+            for (Object item : LL) {
+                MyFigure figure = (MyFigure) item;
+                if (figure.Id == figureChoice.getSelectedIndex()-1)
+                {
+                    figure.speed = speedArray[speedChoice.getSelectedIndex()];
+                }
             }
         }
         repaint();
@@ -138,7 +183,6 @@ class DemonstrationWindow extends Frame implements Observer, ActionListener, Ite
 }
 class MyFigure extends Observable implements Runnable {
     private static Random random = new Random();
-
     Thread thr;
 
     private boolean xplus = false;
@@ -155,7 +199,7 @@ class MyFigure extends Observable implements Runnable {
 
     DemonstrationWindow mainFrame = null;
 
-    public MyFigure (Color col, int figureType, DemonstrationWindow f ){
+    public MyFigure (Color col, int figureType, int speed, DemonstrationWindow f ){
         mainFrame = f;
 
         xplus = true; yplus = true;
@@ -163,31 +207,31 @@ class MyFigure extends Observable implements Runnable {
         x = 20; y = 30;
         incrementX = random.nextInt(3);
         incrementY = random.nextInt(3);
+        if (incrementX == 0) incrementY = 2;
+        if (incrementY == 0) incrementX = 2;
 
-        if (incrementX == 0) incrementY++;
-        if (incrementY == 0) incrementX++;
 
         this.type = figureType;
         this.col = col;
         Id = Main.count++;
-        thr = new Thread(this,Main.count+":"+ Id +":");
+        thr = new Thread(this,"Id: " + Id);
         thr.start();
-        speed = 15;
+        this.speed = speed;
     }
     public void run(){
         while (true){
 
-            if(x>= mainFrame.getSize().width - 20) xplus = false;
+            if(x>= mainFrame.getSize().width - 30) xplus = false;
             if(x<=-1) xplus = true;
 
-            if(y>=mainFrame.getSize().height - 20) yplus = false;
+            if(y>=mainFrame.getSize().height - 30) yplus = false;
             if(y<=29) yplus = true;
 
             if(xplus) x+=incrementX; else x-=incrementX;
             if(yplus) y+=incrementY; else y-=incrementY;
 
             setChanged();notifyObservers (this);
-            try{Thread.sleep (speed);}
+            try{Thread.sleep(speed);}
             catch (InterruptedException e){}
         }
     }
